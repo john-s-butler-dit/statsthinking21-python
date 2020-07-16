@@ -184,7 +184,7 @@ for i in range(num_runs):
 # Now we need to compute the proportion of confidence intervals that capture the population mean (which we know because we are treating the entire NHANES dataset as our population).  Here we will use a trick that relies upon the fact that Python treat `True`/`False` identically to one and zero respectively.  We will test for each of the confidence limits (upper and lower) whether it captures the population mean, and then we will multiply those two series of values together.  This will create a new variable that is True only if both limits capture the population mean. We then simply take the mean of those truth values to compute the poportion of confidence intervals that capture the mean.
 
 # %%
-ci_df['captures_mean'] = (ci_df['lower'] < adult_nhanes_data['Height'].mean()) * (ci_df['upper'] > adult_nhanes_data['Height'].mean())
+ci_df['captures_mean'] = (ci_df['lower'] < adult_nhanes_data['Height'].mean()) & (ci_df['upper'] > adult_nhanes_data['Height'].mean())
 
 ci_df['captures_mean'].mean()
 
