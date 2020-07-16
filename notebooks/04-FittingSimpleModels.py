@@ -243,6 +243,7 @@ plt.hist(height_sample)
 
 plt.subplot(1, 2, 2)
 plt.hist(z_height)
+plt.show()
 
 # %% [markdown]
 # You will notice that the shapes of the histograms are exactly the same. We can also see this by plotting the two variables against one another in a scatterplot:

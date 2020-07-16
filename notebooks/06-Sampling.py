@@ -75,6 +75,7 @@ normal_values = scipy.stats.norm.pdf(
     loc=sampling_results['mean'].mean(),
     scale=sampling_results['mean'].std())
 plt.plot(x_values, normal_values, color='r')
+plt.show()
 #+
 
 # %% [markdown]
@@ -83,6 +84,7 @@ plt.plot(x_values, normal_values, color='r')
 
 # %%
 plt.hist(adult_nhanes_data['AnnualFamilyIncome'])
+plt.show()
 
 
 # %% [markdown]
@@ -137,6 +139,7 @@ plt.title('Original data')
 plt.subplot(1, 2, 2)
 scipy.stats.probplot(family_income_sampling_dist['mean'], plot=sns.mpl.pyplot)
 plt.title('Sampling distribution')
+
 
 # %% [markdown]
 # We see that the raw data are highly non-normal, evidenced by the fact that the data values diverge greatly from the unit line.  On the other hand, the sampling distribution looks much more normally distributed.
