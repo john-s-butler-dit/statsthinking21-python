@@ -80,9 +80,10 @@ print(bt)
 
 # %%
 stats.ttest_1samp(adult_nhames_sample['BodyMassIndexKgm2'],5.0)
+a=3
 
 # %% [markdown]
-# This shows us that the mean BMI in the dataset (`r I(tt$estimate)`) is significantly larger than the cutoff for overweight.
+# This shows us that the mean BMI in the dataset  is significantly larger than the cutoff for overweight.
 #
 # ## Comparing two means {#comparing-two-means}
 #
@@ -94,12 +95,27 @@ stats.ttest_1samp(adult_nhames_sample['BodyMassIndexKgm2'],5.0)
 adult_nhanes_data=adult_nhanes_data.dropna(subset=['EverUsedMarijuanaOrHashish','SleepHoursWeekdaysOrWorkdays']) # Removing NA's
 adult_nhames_sample=adult_nhanes_data.sample(n=200, random_state=0)
 adult_nhames_sample['GenderNum']=adult_nhames_sample['Gender']=='Female'
-
+adult_nhames_sample=adult_nhames_sample[['GenderNum','Gender','SleepHoursWeekdaysOrWorkdays','EverUsedMarijuanaOrHashish']]
 ax = sns.violinplot(x=adult_nhames_sample['Gender'],y=adult_nhames_sample['SleepHoursWeekdaysOrWorkdays'])
 
 # %%
-Group1 = adult_nhames_sample[adult_nhames_sample['Gender']=='Female']
-Group2 = adult_nhames_sample[adult_nhames_sample['Gender']=='Male']
+Group1 = adult_nhames_sample.loc[adult_nhames_sample['Gender']=='Female']
+Group2 = adult_nhames_sample.loc[adult_nhames_sample['Gender']=='Male']
+
+#Group1 =adult_nhames_sample.query('GenderNum==True').sample(200, random_state=2)
+#Group2 =adult_nhames_sample.query('Gender==Male').sample(200, random_state=2)
+
+
+# clean up smoking variables
+#adult_nhanes_data.loc[adult_nhanes_data['SmokedAtLeast100CigarettesInLife'] == 0, 'DoYouNowSmokeCigarettes'] = 'Not at all'
+#adult_nhanes_data.loc[:, 'SmokeNow'] = adult_nhanes_data['DoYouNowSmokeCigarettes'] != 'Not at all'
+
+# Create average alcohol consumption variable between the two dietary recalls
+#adult_nhanes_data.loc[:, 'AvgAlcohol'] = adult_nhanes_data[['AlcoholGm_DR1TOT', 'AlcoholGm_DR2TOT']].mean(1)
+#adult_nhanes_data = adult_nhanes_data.dropna(subset=['AvgAlcohol'])
+
+#sample_size_per_group = 150
+
 stats.ttest_ind(Group1['SleepHoursWeekdaysOrWorkdays'], Group2['SleepHoursWeekdaysOrWorkdays'])
 
 # %% [markdown]
@@ -166,6 +182,7 @@ pandas2ri.activate()
 # import the BayesFactor package
 BayesFactor = importr('BayesFactor')
 
+# %%
 # import the data frames into the R workspace
 robjects.globalenv["Group1"] = Group1
 robjects.globalenv["Group2"] = Group2
@@ -176,17 +193,8 @@ ttest_output = r('print(t.test(Group1$SleepHoursWeekdaysOrWorkdays, Group2$Sleep
 
 # compute the Bayes factor
 r('bf = ttestBF(y=Group1$SleepHoursWeekdaysOrWorkdays, x=Group2$SleepHoursWeekdaysOrWorkdays, nullInterval = c(0, Inf))')
-r('bf')
+r('summary(bf)')
 
-#```{r echo=FALSE}
-# compute bayes factor for group comparison
-#bf <- ttestBF(
-#  formula = TVHrsNum ~ RegularMarij, 
-#  data = NHANES_sample, 
-#  nullInterval = c(0, Inf)
-#)
-#bf
-#```
 
 # %% [markdown]
 # This shows us that the evidence against the null hypothesis is moderately strong.
@@ -194,25 +202,22 @@ r('bf')
 # ## Comparing paired observations {#paired-ttests}
 
 # %%
-#```{r BPfig, echo=FALSE,fig.cap='Left: Violin plot of systolic blood pressure on first and second recording, from NHANES. Right: Same violin plot with lines connecting the two data points for each individual.',fig.width=8,fig.height=4,out.height='50%'}
-#set.seed(12345678)
-#NHANES_sample <- 
-#  NHANES %>% 
-#  dplyr::filter(Age>17 & !is.na(BPSys2) & !is.na(BPSys1)) %>%
-#  dplyr::select(BPSys1,BPSys2,ID) %>%
-#  sample_n(200)
 adult_nhanes_data_na=adult_nhanes_data.dropna(subset=['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg']) # Removing NA's
 adult_nhames_sample=adult_nhanes_data_na.sample(n=200, random_state=50)
 BloodPressure=adult_nhames_sample[['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg']]
-BP=BloodPressure.melt(value_vars = ['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg'],var_name='Order',value_name='Pressure')
+BloodPressure.loc[:,'ID']=np.arange(0,200)
+BP=BloodPressure.melt(id_vars=['ID'],value_vars = ['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg'],var_name='Order',value_name='Pressure')
+BP.head()
 
+# %%
 ax = sns.violinplot(x=BP['Order'],y=BP['Pressure'])
 ax = sns.swarmplot(x="Order", y="Pressure", data=BP, color=".25")
 
 # %%
-BloodPressure['BPSdiff']=BloodPressure['SystolicBloodPres1StRdgMmHg']-BloodPressure['SystolicBloodPres2NdRdgMmHg']
-BloodPressure['meanBPS']=(BloodPressure['SystolicBloodPres1StRdgMmHg']+BloodPressure['SystolicBloodPres2NdRdgMmHg'])/2
-BloodPressure['diffPos']=BloodPressure['BPSdiff']>0
+BloodPressure.loc[:,'BPSdiff']=BloodPressure.loc[:,'SystolicBloodPres1StRdgMmHg']-BloodPressure.loc[:,'SystolicBloodPres2NdRdgMmHg']
+#BloodPressure['meanBPS']=(BloodPressure['SystolicBloodPres1StRdgMmHg']+BloodPressure['SystolicBloodPres2NdRdgMmHg'])/2
+BloodPressure.loc[:,'meanBPS']=adult_nhanes_data[['SystolicBloodPres1StRdgMmHg', 'SystolicBloodPres2NdRdgMmHg']].mean(1)
+BloodPressure.loc[:,'diffPos']=BloodPressure.loc[:,'BPSdiff']>0
 
 # %% [markdown]
 # In experimental research, we often use *within-subjects* designs, in which we compare the same person on multiple measurements.  The measurement that come from this kind of design are often referred to as *repeated measures*. For example, in the NHANES dataset blood pressure was measured three times. Let's say that we are interested in testing whether there is a difference in mean blood pressure between the first and second measurement (Figure  \@ref(fig:BPfig)). We see that there does not seem to be much of a difference in mean blood pressure between time points (about one point). First let's test for a difference using an independent samples t-test, which ignores the fact that pairs of data points come from the the same individuals.   
@@ -259,10 +264,10 @@ stats.ttest_1samp(BloodPressure['BPSdiff'],popmean=0)
 # With this analyses we see that there is in fact a significant difference between the two measurements. Let's compute the Bayes factor to see how much evidence is provided by the result:
 
 # %%
-#```{r echo=FALSE}
-# compute Bayes factor for paired t-test
-#ttestBF(x = NHANES_sample$BPSys1, y = NHANES_sample$BPSys2, paired = TRUE)
-#```
+robjects.globalenv["BloodPressure"] = BloodPressure
+# compute the Bayes factor
+r('bf = ttestBF(x=BloodPressure$SystolicBloodPres1StRdgMmHg, y=BloodPressure$SystolicBloodPres2NdRdgMmHg, paired = TRUE, nullInterval = c(0, Inf))')
+r('summary(bf)')
 
 # %% [markdown]
 # This shows us that although the effect was significant in a paired t-test, it actually provides very little evidence in favor of the alternative hypothesis. 
@@ -274,22 +279,24 @@ stats.ttest_1samp(BloodPressure['BPSdiff'],popmean=0)
 # Often we want to compare more than two means to determine whether any of them differ from one another.  Let's say that we are analyzing data from a clinical trial for the treatment of high blood pressure.  In the study, volunteers are randomized to one of three conditions: Drug 1, Drug 2 or placebo.  Let's generate some data and plot them (see Figure \@ref(fig:DrugTrial))
 
 # %%
-```{r DrugTrial, echo=FALSE,fig.cap='Box plots showing blood pressure for three different groups in our clinical trial.',fig.width=4,fig.height=4,out.height='50%'}
-set.seed(123456)
-nPerGroup <- 36
-noiseSD <- 10
-meanSysBP <- 140
-effectSize <- 0.8
-df <- data.frame(
-  group=as.factor(c(rep('placebo',nPerGroup),
-                    rep('drug1',nPerGroup),
-                    rep('drug2',nPerGroup))),
-  sysBP=NA) 
-df$sysBP[df$group=='placebo'] <- rnorm(nPerGroup,mean=meanSysBP,sd=noiseSD)
-df$sysBP[df$group=='drug1'] <- rnorm(nPerGroup,mean=meanSysBP-noiseSD*effectSize,sd=noiseSD)
-df$sysBP[df$group=='drug2'] <- rnorm(nPerGroup,mean=meanSysBP,sd=noiseSD)
-ggplot(df,aes(group,sysBP)) + geom_boxplot()
-```
+nPerGroup= 36
+
+
+# %%
+np.random.seed(0)
+nPerGroup= 36
+noiseSD = 10
+meanSysBP = 140
+effectSize = 0.8
+
+group=['placebo']*nPerGroup+['drug1']*nPerGroup+['drug2']*nPerGroup
+sysBP1=np.random.normal(meanSysBP, noiseSD, nPerGroup)
+sysBP2=(np.random.normal(meanSysBP-noiseSD*effectSize, noiseSD, nPerGroup))
+sysBP3=(np.random.normal(meanSysBP, noiseSD, nPerGroup))
+sysBP=[[sysBP1],[sysBP2],[sysBP3]]
+sysBP=np.concatenate((sysBP1,sysBP2,sysBP3), axis=0)
+df=pd.DataFrame({'group': group,'sysBP':sysBP})
+ax = sns.boxplot(x="group", y="sysBP", data=df)
 
 # %% [markdown]
 # ### Analysis of variance {#ANOVA}
@@ -309,53 +316,49 @@ ggplot(df,aes(group,sysBP)) + geom_boxplot()
 # With ANOVA, we want to test whether the variance accounted for by the model is greater than what we would expect by chance, under the null hypothesis of no differences between means.  Whereas for the t distribution the expected value is zero under the null hypothesis, that's not the case here, since sums of squares are always positive numbers.  Fortunately, there is another standard distribution that describes how ratios of sums of squares are distributed under the null hypothesis: The *F* distribution (see figure \@ref(fig:FDist)). This distribution has two degrees of freedom, which correspond to the degrees of freedom for the numerator (which in this case is the model), and the denominator (which in this case is the error).
 
 # %%
-```{r FDist, echo=FALSE,fig.cap='F distributions under the null hypothesis, for different values of degrees of freedom.',fig.width=4,fig.height=4,out.height='50%'}
-fdata <- 
-  data.frame(x=seq(0.1,10,.1)) %>%
-  mutate(
-    f_1_1=df(x,1,1),
-    f_1_50=df(x,1,50),
-    f_10_50=df(x,10,50)
-  )
-ggplot(fdata,aes(x,f_1_1)) +
-  geom_line() +
-  geom_line(aes(x,f_1_50),linetype='dotted') +
-  geom_line(aes(x,f_10_50),linetype='dashed') +
-  labs(y = "Density", x = "F values")
-  
-```
+from scipy.stats import f
+x=np.arange(0.1,10,0.1)
+ax=sns.lineplot(x=x,y=f.pdf(x, 1, 1))
+ax=sns.lineplot(x=x,y=f.pdf(x, 50, 1))
+ax=sns.lineplot(x=x,y=f.pdf(x, 50, 10))
+ax.set(xlabel='F Values', ylabel='Density')
+plt.show()
 
 # %% [markdown]
 # To create an ANOVA model, we extend the idea of *dummy coding* that you encountered in the last chapter. Remember that for the t-test comparing two means, we created a single dummy variable that took the value of 1 for one of the conditions and zero for the others.  Here we extend that idea by creating two dummy variables, one that codes for the Drug 1 condition and the other that codes for the Drug 2 condition.  Just as in the t-test, we will have one condition (in this case, placebo) that doesn't have a dummy variable, and thus represents the baseline against which the others are compared; its mean defines the intercept of the model. Let's create the dummy coding for drugs 1 and 2.
 
 # %%
-```{r echo=FALSE}
+#```{r echo=FALSE}
 # create dummy variables for drug1 and drug2
-df <-
-  df %>%
-  mutate(
-    d1 = as.integer(group == "drug1"), # 1s for drug1, 0s for all other drugs
-    d2 = as.integer(group == "drug2")  # 1s for drug2, 0s for all other drugs
-  )
-```
+#df <-
+#  df %>%
+#  mutate(
+#    d1 = as.integer(group == "drug1"), # 1s for drug1, 0s for all other drugs
+#    d2 = as.integer(group == "drug2")  # 1s for drug2, 0s for all other drugs
+#  )
+#```
 
 # %% [markdown]
 # Now we can fit a model using the same approach that we used in the previous chapter:
 
 # %%
-```{r echo=FALSE}
-# test model without separate duymmies
-lmResultAnovaBasic <- lm(sysBP ~ group, data=df)
-emm.result <- emmeans(lmResultAnovaBasic, "group" )
-# pairs(emm.result)
-```
+
+import statsmodels.api as sm
+ols_model = ols(formula='sysBP~ group', data=df)
+ols_result = ols_model.fit()
+aov_table = sm.stats.anova_lm(ols_result)
+aov_table 
 
 # %%
-```{r echo=FALSE}
+#```{r echo=FALSE}
 # fit ANOVA model
-lmResultANOVA <- lm(sysBP ~ d1 + d2, data = df)
-summary(lmResultANOVA)
-```
+#lmResultANOVA <- lm(sysBP ~ d1 + d2, data = df)
+#summary(lmResultANOVA)
+#```
+
+ols_model = ols(formula='sysBP~ group + 1', data=df)
+ols_result = ols_model.fit()
+ols_result.summary()
 
 # %% [markdown]
 # The output from this command provides us with two things.  First, it shows us the result of a t-test for each of the dummy variables, which basically tell us whether each of the conditions separately differs from placebo; it appears that Drug 1 does whereas Drug 2 does not.  However, keep in mind that if we wanted to interpret these tests, we would need to correct the p-values to account for the fact that we have done multiple hypothesis tests; we will see an example of how to do this in the next chapter.
@@ -384,12 +387,12 @@ summary(lmResultANOVA)
 # We can also define the paired t-test in terms of a general linear model.  To do this, we include all of the measurements for each subject as data points (within a tidy data frame).  We then include in the model a variable that codes for the identity of each individual (in this case, the ID variable that contains a subject ID for each person). This is known as a *mixed model*, since it includes effects of independent variables as well as effects of individuals.  The standard model fitting procedure ```lm()``` can't do this, but we can do it using the ```lmer()``` function from a popular R package called *lme4*, which is specialized for estimating mixed models.  The ```(1|ID)``` in the formula tells `lmer()` to estimate a separate intercept (which is what the ```1``` refers to) for each value of the ```ID``` variable (i.e. for each individual in the dataset), and then estimate a common slope relating timepoint to BP.
 
 # %%
-```{r,messages=FALSE}
+#```{r,messages=FALSE}
 # compute mixed model for paired test
-lmrResult <- lmer(BPsys ~ timepoint + (1 | ID), 
-                  data = NHANES_sample_tidy)
-summary(lmrResult)
-```
+#lmrResult <- lmer(BPsys ~ timepoint + (1 | ID), 
+#                  data = NHANES_sample_tidy)
+#summary(lmrResult)
+#```
 
 # %% [markdown]
 # You can see that this shows us a p-value that is very close to the result from the paired t-test computed using the ```t.test()``` function.
