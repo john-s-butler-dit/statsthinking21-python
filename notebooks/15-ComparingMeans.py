@@ -22,6 +22,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 import seaborn as sns
+import statsmodels.api as sm
 
 # %%
 # load the NHANES data library
@@ -37,7 +38,7 @@ adult_nhanes_data = nhanes_data.query('AgeInYearsAtScreening > 17')
 # In this chapter, we will delve deeper into the various ways that we can compare means.
 #
 #
-# ## Testing the value of a single mean {#single-mean}
+# ## Testing the value of a single mean
 #
 # The simplest question we might want to ask of a mean is whether it has a specific value.  Let's say that we want to test whether the mean BMI value in adults from the NHANES dataset is above 25, which is the lower cutoff for being overweight according to the US Centers for Disease Control.  We take a sample of 200 adults in order to ask this question.
 
@@ -80,7 +81,6 @@ print(bt)
 
 # %%
 stats.ttest_1samp(adult_nhames_sample['BodyMassIndexKgm2'],5.0)
-a=3
 
 # %% [markdown]
 # This shows us that the mean BMI in the dataset  is significantly larger than the cutoff for overweight.
@@ -96,27 +96,11 @@ adult_nhanes_data=adult_nhanes_data.dropna(subset=['EverUsedMarijuanaOrHashish',
 adult_nhames_sample=adult_nhanes_data.sample(n=200, random_state=0)
 adult_nhames_sample['GenderNum']=adult_nhames_sample['Gender']=='Female'
 adult_nhames_sample=adult_nhames_sample[['GenderNum','Gender','SleepHoursWeekdaysOrWorkdays','EverUsedMarijuanaOrHashish']]
-ax = sns.violinplot(x=adult_nhames_sample['Gender'],y=adult_nhames_sample['SleepHoursWeekdaysOrWorkdays'])
+ax = sns.violinplot(x=adult_nhames_sample['EverUsedMarijuanaOrHashish'],y=adult_nhames_sample['SleepHoursWeekdaysOrWorkdays'])
 
 # %%
-Group1 = adult_nhames_sample.loc[adult_nhames_sample['Gender']=='Female']
-Group2 = adult_nhames_sample.loc[adult_nhames_sample['Gender']=='Male']
-
-#Group1 =adult_nhames_sample.query('GenderNum==True').sample(200, random_state=2)
-#Group2 =adult_nhames_sample.query('Gender==Male').sample(200, random_state=2)
-
-
-# clean up smoking variables
-#adult_nhanes_data.loc[adult_nhanes_data['SmokedAtLeast100CigarettesInLife'] == 0, 'DoYouNowSmokeCigarettes'] = 'Not at all'
-#adult_nhanes_data.loc[:, 'SmokeNow'] = adult_nhanes_data['DoYouNowSmokeCigarettes'] != 'Not at all'
-
-# Create average alcohol consumption variable between the two dietary recalls
-#adult_nhanes_data.loc[:, 'AvgAlcohol'] = adult_nhanes_data[['AlcoholGm_DR1TOT', 'AlcoholGm_DR2TOT']].mean(1)
-#adult_nhanes_data = adult_nhanes_data.dropna(subset=['AvgAlcohol'])
-
-#sample_size_per_group = 150
-
-stats.ttest_ind(Group1['SleepHoursWeekdaysOrWorkdays'], Group2['SleepHoursWeekdaysOrWorkdays'])
+Group1 = adult_nhames_sample.loc[adult_nhames_sample['EverUsedMarijuanaOrHashish']==0.0]
+Group2 = adult_nhames_sample.loc[adult_nhames_sample['EverUsedMarijuanaOrHashish']==1.0]
 
 # %% [markdown]
 # We can also use Student's t test to test for differences between two groups of independent observations (as we saw in an earlier chapter); we will turn later in the chapter to cases where the observations are not independent.  As a reminder, the t-statistic for comparison of two independent groups is computed as:
@@ -128,10 +112,7 @@ stats.ttest_ind(Group1['SleepHoursWeekdaysOrWorkdays'], Group2['SleepHoursWeekda
 # where $\bar{X}_1$ and $\bar{X}_2$ are the means of the two groups, $S^2_1$ and $S^2_2$ are the variances for each of the groups, and $n_1$ and $n_2$ are the sizes of the two groups.  Under the null hypothesis of no difference between means, this statistic is distributed according to a t distribution with n-2 degrees of freedom (since we have computed two parameter estimates, namely the means of the two groups).  We can compute the independent t-test in Python using the ```ttest_ind()``` function. In this case, we started with the specific hypothesis that smoking marijuana is associated with greater TV watching, so we will use a one-tailed test.  Since the t.test function orders the conditions alphabetically, the "No" group comes first, and thus we need to test the alternative hypothesis of whether the first group is less than the second ("Yes") group; for this reason, we specify 'less' as our alternative.
 
 # %%
-#```{r echo=FALSE,warning=FALSE}
-# compute t test for tv watching as function of marijuana use
-#ttresult
-#```
+stats.ttest_ind(Group2['SleepHoursWeekdaysOrWorkdays'], Group1['SleepHoursWeekdaysOrWorkdays'])
 
 # %% [markdown]
 # In this case we see that there is a statistically significant difference between groups, in the expected direction - regular pot smokers watch more TV.
@@ -143,11 +124,11 @@ stats.ttest_ind(Group1['SleepHoursWeekdaysOrWorkdays'], Group2['SleepHoursWeekda
 # $$
 # \hat{TV} = \hat{\beta_1}*Marijuana + \hat{\beta_0}
 # $$
-# However, smoking is a binary variable, so we treat it as a *dummy variable* like we discussed in the previous chapter, setting it to a value of 1 for smokers and zero for nonsmokers.  In that case, $\hat{\beta_1}$ is simply the difference in means between the two groups, and $\hat{\beta_0}$ is the mean for the group that was coded as zero.  We can fit this model using the ```lm()``` function, and see that it gives the same t statistic as the t-test above:
+# However, smoking is a binary variable, so we treat it as a *dummy variable* like we discussed in the previous chapter, setting it to a value of 1 for smokers and zero for nonsmokers.  In that case, $\hat{\beta_1}$ is simply the difference in means between the two groups, and $\hat{\beta_0}$ is the mean for the group that was coded as zero.  We can fit this model using the ```ols()``` function, and see that it gives the same t statistic as the t-test above:
 
 # %%
 from statsmodels.formula.api import ols
-ols_model = ols(formula='SleepHoursWeekdaysOrWorkdays~ GenderNum + 1', data=adult_nhames_sample)
+ols_model = ols(formula='SleepHoursWeekdaysOrWorkdays~ EverUsedMarijuanaOrHashish + 1', data=adult_nhames_sample)
 ols_result = ols_model.fit()
 ols_result.summary()
 
@@ -190,7 +171,6 @@ robjects.globalenv["Group2"] = Group2
 # %%
 # perform the standard t-test
 ttest_output = r('print(t.test(Group1$SleepHoursWeekdaysOrWorkdays, Group2$SleepHoursWeekdaysOrWorkdays, alternative="greater"))')
-
 # compute the Bayes factor
 r('bf = ttestBF(y=Group1$SleepHoursWeekdaysOrWorkdays, x=Group2$SleepHoursWeekdaysOrWorkdays, nullInterval = c(0, Inf))')
 r('summary(bf)')
@@ -199,7 +179,7 @@ r('summary(bf)')
 # %% [markdown]
 # This shows us that the evidence against the null hypothesis is moderately strong.
 #
-# ## Comparing paired observations {#paired-ttests}
+# ## Comparing paired observations
 
 # %%
 adult_nhanes_data_na=adult_nhanes_data.dropna(subset=['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg']) # Removing NA's
@@ -207,7 +187,6 @@ adult_nhames_sample=adult_nhanes_data_na.sample(n=200, random_state=50)
 BloodPressure=adult_nhames_sample[['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg']]
 BloodPressure.loc[:,'ID']=np.arange(0,200)
 BP=BloodPressure.melt(id_vars=['ID'],value_vars = ['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg'],var_name='Order',value_name='Pressure')
-BP.head()
 
 # %%
 ax = sns.violinplot(x=BP['Order'],y=BP['Pressure'])
@@ -232,7 +211,7 @@ stats.ttest_ind(BloodPressure['SystolicBloodPres1StRdgMmHg'], BloodPressure['Sys
 
 # %%
 ax=BloodPressure['BPSdiff'].hist(bins=20)
-ax.axvline(BloodPressure['BPSdiff'].mean(),color='b',linewidth=4)
+ax.axvline(BloodPressure['BPSdiff'].mean(),color='k',linewidth=4)
 plt.show()
 
 # %% [markdown]
@@ -290,13 +269,12 @@ meanSysBP = 140
 effectSize = 0.8
 
 group=['placebo']*nPerGroup+['drug1']*nPerGroup+['drug2']*nPerGroup
-sysBP1=np.random.normal(meanSysBP, noiseSD, nPerGroup)
-sysBP2=(np.random.normal(meanSysBP-noiseSD*effectSize, noiseSD, nPerGroup))
-sysBP3=(np.random.normal(meanSysBP, noiseSD, nPerGroup))
-sysBP=[[sysBP1],[sysBP2],[sysBP3]]
-sysBP=np.concatenate((sysBP1,sysBP2,sysBP3), axis=0)
-df=pd.DataFrame({'group': group,'sysBP':sysBP})
-ax = sns.boxplot(x="group", y="sysBP", data=df)
+BP1sys=np.random.normal(meanSysBP, noiseSD, nPerGroup)
+BP2sys=(np.random.normal(meanSysBP-noiseSD*effectSize, noiseSD, nPerGroup))
+BP3sys=(np.random.normal(meanSysBP, noiseSD, nPerGroup))
+BPsys=np.concatenate((BP1sys,BP2sys,BP3sys), axis=0)
+df=pd.DataFrame({'group': group,'BPsys':BPsys})
+ax = sns.boxplot(x="group", y="BPsys", data=df)
 
 # %% [markdown]
 # ### Analysis of variance {#ANOVA}
@@ -328,37 +306,18 @@ plt.show()
 # To create an ANOVA model, we extend the idea of *dummy coding* that you encountered in the last chapter. Remember that for the t-test comparing two means, we created a single dummy variable that took the value of 1 for one of the conditions and zero for the others.  Here we extend that idea by creating two dummy variables, one that codes for the Drug 1 condition and the other that codes for the Drug 2 condition.  Just as in the t-test, we will have one condition (in this case, placebo) that doesn't have a dummy variable, and thus represents the baseline against which the others are compared; its mean defines the intercept of the model. Let's create the dummy coding for drugs 1 and 2.
 
 # %%
-#```{r echo=FALSE}
-# create dummy variables for drug1 and drug2
-#df <-
-#  df %>%
-#  mutate(
-#    d1 = as.integer(group == "drug1"), # 1s for drug1, 0s for all other drugs
-#    d2 = as.integer(group == "drug2")  # 1s for drug2, 0s for all other drugs
-#  )
-#```
+df['drug1']=df['group']=='drug1'
+df['drug2']=df['group']=='drug2'
 
 # %% [markdown]
 # Now we can fit a model using the same approach that we used in the previous chapter:
 
 # %%
 
-import statsmodels.api as sm
-ols_model = ols(formula='sysBP~ group', data=df)
+ols_model = ols(formula='BPsys~ drug1+drug2', data=df)
 ols_result = ols_model.fit()
 aov_table = sm.stats.anova_lm(ols_result)
 aov_table 
-
-# %%
-#```{r echo=FALSE}
-# fit ANOVA model
-#lmResultANOVA <- lm(sysBP ~ d1 + d2, data = df)
-#summary(lmResultANOVA)
-#```
-
-ols_model = ols(formula='sysBP~ group + 1', data=df)
-ols_result = ols_model.fit()
-ols_result.summary()
 
 # %% [markdown]
 # The output from this command provides us with two things.  First, it shows us the result of a t-test for each of the dummy variables, which basically tell us whether each of the conditions separately differs from placebo; it appears that Drug 1 does whereas Drug 2 does not.  However, keep in mind that if we wanted to interpret these tests, we would need to correct the p-values to account for the fact that we have done multiple hypothesis tests; we will see an example of how to do this in the next chapter.
@@ -366,9 +325,17 @@ ols_result.summary()
 # Remember that the hypothesis that we started out wanting to test was whether there was any difference between any of the conditions; we refer to this as an *omnibus* hypothesis test, and it is the test that is provided by the F statistic. The F statistic basically tells us whether our model is better than a simple model that just includes an intercept.  In this case we see that the F test is highly significant, consistent with our impression that there did seem to be differences between the groups (which in fact we know there were, because we created the data).
 
 # %%
-```{r echo=FALSE}
-# Add section on post-hoc tests using emmeans
-```
+ols_model = ols(formula='BPsys~ group', data=df)
+ols_result = ols_model.fit()
+aov_table = sm.stats.anova_lm(ols_result)
+aov_table 
+
+# %%
+import pingouin as pg
+pg.anova(data=df, dv='BPsys',between='group', effsize="np2")
+
+# %%
+pg.pairwise_tukey(data=df, dv='BPsys', between='group')
 
 # %% [markdown]
 # ## Learning objectives
@@ -387,14 +354,13 @@ ols_result.summary()
 # We can also define the paired t-test in terms of a general linear model.  To do this, we include all of the measurements for each subject as data points (within a tidy data frame).  We then include in the model a variable that codes for the identity of each individual (in this case, the ID variable that contains a subject ID for each person). This is known as a *mixed model*, since it includes effects of independent variables as well as effects of individuals.  The standard model fitting procedure ```lm()``` can't do this, but we can do it using the ```lmer()``` function from a popular R package called *lme4*, which is specialized for estimating mixed models.  The ```(1|ID)``` in the formula tells `lmer()` to estimate a separate intercept (which is what the ```1``` refers to) for each value of the ```ID``` variable (i.e. for each individual in the dataset), and then estimate a common slope relating timepoint to BP.
 
 # %%
-#```{r,messages=FALSE}
-# compute mixed model for paired test
-#lmrResult <- lmer(BPsys ~ timepoint + (1 | ID), 
-#                  data = NHANES_sample_tidy)
-#summary(lmrResult)
-#```
+ols_model = ols(formula='BPsys~ drug1+drug2 + 1', data=df)
+ols_result = ols_model.fit()
+ols_result.summary()
 
 # %% [markdown]
 # You can see that this shows us a p-value that is very close to the result from the paired t-test computed using the ```t.test()``` function.
+
+# %%
 
 # %%
