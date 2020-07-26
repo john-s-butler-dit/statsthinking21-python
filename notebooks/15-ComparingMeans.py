@@ -53,7 +53,13 @@ adult_nhames_sample['BMIdiff']=adult_nhames_sample['BodyMassIndexKgm2']>25
 
 # %% [markdown]
 # One simple way to test for this difference is using a test called the *sign test*, 
-# which asks whether the proportion of positive differences between the actual value and the hypothesized value is different than what we would expect by chance.  To do this, we take the differences between each data point and the hypothesized mean value and compute their sign.  In our sample, we see that `r I(sprintf('%0.1f',mean(NHANES_sample$BMIdiff)*100))` percent of individuals have a BMI greater than 25.  We can then use a binomial test to ask whether this proportion of positive differences is greater than 0.5, using the `binom_test()` function in Python:
+# which asks whether the proportion of positive differences between the actual value and the hypothesized value is different than what we would expect by chance.  To do this, we take the differences between each data point and the hypothesized mean value and compute their sign.  In our sample, we see that 
+
+# %%
+print(np.mean(adult_nhames_sample['BMIdiff']*100))
+
+# %% [markdown]
+# percent of individuals have a BMI greater than 25.  We can then use a binomial test to ask whether this proportion of positive differences is greater than 0.5, using the `binom_test()` function in Python:
 
 # %%
 # compute sign test for differences between first and second measurement
@@ -133,8 +139,18 @@ ols_result = ols_model.fit()
 ols_result.summary()
 
 # %% [markdown]
-# We can also view the linear model results graphically (see the right panel of Figure \@ref(fig:PotTVViolin)).  In this case, the predicted value for nonsmokers is $\hat{\beta_0}$ (`r I(lm_summary$coefficients[1,1])`) and the predicted value for smokers is $\hat{\beta_0} +\hat{\beta_1}$ (`r I(lm_summary$coefficients[1,1] + lm_summary$coefficients[2,1])`).  
-#
+# We can also view the linear model results graphically (see the right panel of Figure \@ref(fig:PotTVViolin)).  In this case, the predicted value for nonsmokers is $\hat{\beta_0}$ is
+
+# %%
+ols_result.params[0]
+
+# %% [markdown]
+# and the predicted value for smokers is $\hat{\beta_0} +\hat{\beta_1}$ 
+
+# %%
+ols_result.params[0]+ols_result.params[1]
+
+# %% [markdown]
 # To compute the standard errors for this analysis, we can use exactly the same equations that we used for linear regression -- since this really is just another example of linear regression.  In fact, if you compare the p-value from the t-test above with the p-value in the linear regression analysis for the marijuana use variable, you will see that the one from the linear regression analysis is exactly twice the one from the t-test, because the linear regression analysis is performing a two-tailed test.  
 #
 # ### Effect sizes for comparing two means
@@ -144,9 +160,24 @@ ols_result.summary()
 # $$
 # d = \frac{\hat{beta_1}}{SE_{residual}}
 # $$
-# We can obtain these values from the analysis output above, giving us a d = `r I(lm_summary$coefficients[2,1]/lm_summary$sigma)`, which we would generally interpret as a medium sized effect.
+# We can obtain these values from the analysis output above, giving us a d = 
+
+# %%
+ols_result.params[1]
+
+# %%
+ols_result.params[1]/np.sqrt(np.sum(ols_result.resid**2)/200)
+
+# %% [markdown]
+# , which we would generally interpret as a medium sized effect.
 #
-# We can also compute $R^2$ for this analysis, which tells us how much variance in TV watching is accounted for.  This value (which is reported in the summary of the lm() analysis) is `r I(lm_summary$r.squared)`, which tells us that while the effect may be statistically significant, it accounts for relatively little of the variance in TV watching.
+# We can also compute $R^2$ for this analysis, which tells us how much variance in TV watching is accounted for.  This value (which is reported in the summary of the lm() analysis) is 
+
+# %%
+ols_result.rsquared
+
+# %% [markdown]
+# which tells us that while the effect may be statistically significant, it accounts for relatively little of the variance in TV watching.
 #
 # ## Bayes factor for mean differences
 #
@@ -183,7 +214,7 @@ r('summary(bf)')
 
 # %%
 adult_nhanes_data_na=adult_nhanes_data.dropna(subset=['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg']) # Removing NA's
-adult_nhames_sample=adult_nhanes_data_na.sample(n=200, random_state=50)
+adult_nhames_sample=adult_nhanes_data_na.sample(n=200, random_state=10)
 BloodPressure=adult_nhames_sample[['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg']]
 BloodPressure.loc[:,'ID']=np.arange(0,200)
 BP=BloodPressure.melt(id_vars=['ID'],value_vars = ['SystolicBloodPres1StRdgMmHg','SystolicBloodPres2NdRdgMmHg'],var_name='Order',value_name='Pressure')
@@ -225,7 +256,13 @@ bt=stats.binom_test(npos, n=BloodPressure.shape[0], p=0.5, alternative='greater'
 print(bt)
 
 # %% [markdown]
-# Here we see that the proportion of individuals with positive signs (`r I(bt$estimate)`) is not large enough to be surprising under the null hypothesis of $p=0.5$. However, one problem with the sign test is that it is throwing away information about the magnitude of the differences, and thus might be missing something.
+# Here we see that the proportion of individuals with positive signs 
+
+# %%
+print(npos/BloodPressure.shape[0])
+
+# %% [markdown]
+#  is not large enough to be surprising under the null hypothesis of $p=0.5$. However, one problem with the sign test is that it is throwing away information about the magnitude of the differences, and thus might be missing something.
 #
 # ### Paired t-test
 # A more common strategy is to use a *paired t-test*. We can compute this using the ```ttest_rel()``` function in Python.  
