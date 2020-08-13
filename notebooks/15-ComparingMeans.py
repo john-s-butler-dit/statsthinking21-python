@@ -163,10 +163,7 @@ ols_result.params[0]+ols_result.params[1]
 # We can obtain these values from the analysis output above, giving us a d = 
 
 # %%
-ols_result.params[1]
-
-# %%
-ols_result.params[1]/np.sqrt(np.sum(ols_result.resid**2)/200)
+ols_result.params[1]/np.std(ols_result.resid)
 
 # %% [markdown]
 # , which we would generally interpret as a medium sized effect.
@@ -314,7 +311,7 @@ df=pd.DataFrame({'group': group,'BPsys':BPsys})
 ax = sns.boxplot(x="group", y="BPsys", data=df)
 
 # %% [markdown]
-# ### Analysis of variance {#ANOVA}
+# ### Analysis of variance
 #
 # We would first like to test the null hypothesis that the means of all of the groups are equal -- that is, neither of the treatments had any effect. We can do this using a method called *analysis of variance* (ANOVA). This is one of the most commonly used methods in psychological statistics, and we will only scratch the surface here.  The basic idea behind ANOVA is one that we already discussed in the chapter on the general linear model, and in fact ANOVA is just a name for a specific implementation of such a model.
 #
@@ -333,10 +330,11 @@ ax = sns.boxplot(x="group", y="BPsys", data=df)
 # %%
 from scipy.stats import f
 x=np.arange(0.1,10,0.1)
-ax=sns.lineplot(x=x,y=f.pdf(x, 1, 1))
-ax=sns.lineplot(x=x,y=f.pdf(x, 50, 1))
-ax=sns.lineplot(x=x,y=f.pdf(x, 50, 10))
+ax=sns.lineplot(x=x,y=f.pdf(x, 1, 1),color='r',label='df(1,1)')
+ax=sns.lineplot(x=x,y=f.pdf(x, 50, 1),color='g',label='df(50,1)')
+ax=sns.lineplot(x=x,y=f.pdf(x, 50, 10),color='b',label='df(50,10)')
 ax.set(xlabel='F Values', ylabel='Density')
+plt.legend()
 plt.show()
 
 # %% [markdown]
